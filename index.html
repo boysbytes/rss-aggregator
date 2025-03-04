@@ -3,34 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Multiple RSS Feeds Display</title>
+  <title>RSS Feed - Only Main Images</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       line-height: 1.6;
+      text-align: center;
     }
     .feed-container {
       max-width: 800px;
       margin: 0 auto;
     }
-    .feed-item {
-      border-bottom: 1px solid #ccc;
-      padding: 10px 0;
-    }
-    .feed-item h2 {
-      font-size: 18px;
-    }
-    .feed-item a {
-      text-decoration: none;
-      color: #007BFF;
-    }
-    .feed-item a:hover {
-      text-decoration: underline;
-    }
     .feed-item img {
       max-width: 100%;
       height: auto;
-      margin-top: 10px;
+      margin-bottom: 20px;
     }
   </style>
 </head>
@@ -39,69 +26,53 @@
 
   <script>
     const feeds = [
-      "https://boysbytes.github.io/day-dots-jekyll/feed.xml", // Add your GitHub Pages RSS feed URLs here
-      // "https://another-github-pages-site.github.io/feed.xml"
+      "https://boysbytes.github.io/day-dots-jekyll/feed.xml" // Add your RSS feed URLs here
     ];
 
-    async function fetchAndDisplayFeeds() {
+    async function fetchAndDisplayImages() {
       const parser = new DOMParser();
-      let allItems = [];
+      const container = document.getElementById("rss-feed");
+
+      let allImages = [];
 
       for (const feed of feeds) {
         try {
+          // Fetch the RSS feed
           const response = await fetch(feed);
           const text = await response.text();
           const xml = parser.parseFromString(text, "application/xml");
 
+          // Parse RSS items
           const items = Array.from(xml.querySelectorAll("item")).map(item => {
             let imageUrl = null;
 
-            // Check for image in <enclosure> tag
-            const enclosure = item.querySelector("enclosure");
-            if (enclosure && enclosure.getAttribute("url")) {
-              imageUrl = enclosure.getAttribute("url");
-            } else {
-              // Fallback to extracting image from <description>
-              const description = item.querySelector("description");
-              if (description && description.textContent) {
-                const imgMatch = description.textContent.match(/<img[^>]+src="([^">]+)"/);
-                if (imgMatch) {
-                  imageUrl = imgMatch[1];
-                }
+            // Extract the first <img> tag from the <description> field
+            const description = item.querySelector("description");
+            if (description && description.textContent) {
+              const imgMatch = description.textContent.match(/<img[^>]+src="([^">]+)"/);
+              if (imgMatch) {
+                imageUrl = imgMatch[1]; // Extract the URL inside src=""
               }
             }
 
-            return {
-              title: item.querySelector("title").textContent,
-              link: item.querySelector("link").textContent,
-              pubDate: new Date(item.querySelector("pubDate").textContent),
-              description: item.querySelector("description")?.textContent || "",
-              imageUrl
-            };
+            return imageUrl; // Return only the main image URL
           });
 
-          allItems = allItems.concat(items);
+          allImages = allImages.concat(items.filter(img => img)); // Filter out null values
         } catch (error) {
           console.error(`Error fetching feed ${feed}:`, error);
         }
       }
 
-      // Sort items by publication date in descending order
-      allItems.sort((a, b) => b.pubDate - a.pubDate);
-
-      // Display the sorted items
-      const container = document.getElementById("rss-feed");
-      container.innerHTML = allItems.map(item => `
+      // Render images to the page
+      container.innerHTML = allImages.map(imageUrl => `
         <div class="feed-item">
-          <h2><a href="${item.link}" target="_blank">${item.title}</a></h2>
-          <p>${item.pubDate.toLocaleString()}</p>
-          ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.title}">` : ""}
-          <p>${item.description}</p>
+          <img src="${imageUrl}" alt="RSS Feed Image">
         </div>
       `).join("");
     }
 
-    fetchAndDisplayFeeds();
+    fetchAndDisplayImages();
   </script>
 </body>
 </html>
