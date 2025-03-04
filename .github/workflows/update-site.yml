@@ -13,11 +13,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16' # Choose a suitable Node.js version
+
+      - name: Install dependencies
+        run: |
+          npm install node-fetch xmldom
+
       - name: Update site content
         run: |
-          # Example script to fetch RSS feeds or update content
-          # Add your custom commands here
-          echo "Updating site content..."
+          node update-rss.js
 
       - name: Commit and push changes
         run: |
