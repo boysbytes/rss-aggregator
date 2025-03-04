@@ -56,8 +56,8 @@ async function fetchAndDisplayFeeds() {
   container.innerHTML = allItems.map(item => `
     <div class="feed-item">
       <h2><a href="${item.link}" target="_blank">${item.title}</a></h2>
-      <p><strong>${item.websiteTitle}</strong></p> <!-- Display website title -->
-      <p>${item.pubDate.toLocaleString()}</p>
+      <p><strong>${item.websiteTitle}</strong></p>
+      <p>${item.pubDate.toLocaleDateString()}</p> <!-- Show only date -->
       ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.title}">` : ""}
       <p>${item.description}</p>
     </div>
