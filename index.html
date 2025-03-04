@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSS Feed Display</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+    }
+    .feed-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .feed-item {
+      border-bottom: 1px solid #ccc;
+      padding: 10px 0;
+    }
+    .feed-item h2 {
+      font-size: 18px;
+    }
+    .feed-item a {
+      text-decoration: none;
+      color: #007BFF;
+    }
+    .feed-item a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="feed-container" id="rss-feed"></div>
+
+  <script>
+    const feeds = [
+      "https://boysbytes.github.io/day-dots-jekyll/feed.xml", // Replace with your RSS feed URLs
+      // "https://example.com/feed2.xml"
+    ];
+
+    async function fetchAndDisplayFeeds() {
+      const parser = new DOMParser();
+      let allItems = [];
+
+      for (const feed of feeds) {
+        try {
+          const response = await fetch(feed);
+          const text = await response.text();
+          const xml = parser.parseFromString(text, "text/xml");
+
+          const items = Array.from(xml.querySelectorAll("item")).map(item => ({
+            title: item.querySelector("title").textContent,
+            link: item.querySelector("link").textContent,
+            pubDate: new Date(item.querySelector("pubDate").textContent)
+          }));
+
+          allItems = allItems.concat(items);
+        } catch (error) {
+          console.error(`Error fetching feed ${feed}:`, error);
+        }
+      }
+
+      // Sort items by publication date in descending order
+      allItems.sort((a, b) => b.pubDate - a.pubDate);
+
+      // Display the sorted items
+      const container = document.getElementById("rss-feed");
+      container.innerHTML = allItems
+        .map(
+          item => `
+          <div class="feed-item">
+            <h2><a href="${item.link}" target="_blank">${item.title}</a></h2>
+            <p>${item.pubDate.toLocaleString()}</p>
+          </div>`
+        )
+        .join("");
+    }
+
+    fetchAndDisplayFeeds();
+  </script>
+</body>
+</html>
