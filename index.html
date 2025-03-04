@@ -3,22 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RSS Feed with Main Images and Text</title>
+  <title>RSS Feed with Cards</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
     }
     .feed-container {
-      max-width: 800px;
-      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap; /* Ensures cards wrap to the next row */
+      gap: 20px; /* Adds spacing between cards */
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 10px;
     }
     .feed-item {
-      border-bottom: 1px solid #ccc;
-      padding: 10px 0;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      width: calc(33.333% - 20px); /* Three cards per row */
+      padding: 15px;
+      box-sizing: border-box;
     }
     .feed-item h2 {
       font-size: 18px;
+      margin-bottom: 10px;
     }
     .feed-item a {
       text-decoration: none;
@@ -31,6 +44,21 @@
       max-width: 100%;
       height: auto;
       margin-top: 10px;
+      border-radius: 4px;
+    }
+    .feed-item p {
+      font-size: 14px;
+      color: #555;
+    }
+    @media (max-width: 768px) {
+      .feed-item {
+        width: calc(50% - 20px); /* Two cards per row on smaller screens */
+      }
+    }
+    @media (max-width: 480px) {
+      .feed-item {
+        width: calc(100% - 20px); /* One card per row on very small screens */
+      }
     }
   </style>
 </head>
@@ -49,25 +77,19 @@
 
       for (const feed of feeds) {
         try {
-          // Fetch the RSS feed
           const response = await fetch(feed);
           const text = await response.text();
           const xml = parser.parseFromString(text, "application/xml");
 
-          // Parse RSS items
           const items = Array.from(xml.querySelectorAll("item")).map(item => {
             let imageUrl = null;
 
-            // Extract the first <img> tag from the <description> field
             const description = item.querySelector("description");
             if (description && description.textContent) {
               const imgMatch = description.textContent.match(/<img[^>]+src="([^">]+)"/);
-              if (imgMatch) {
-                imageUrl = imgMatch[1]; // Extract the URL inside src=""
-              }
+              if (imgMatch) imageUrl = imgMatch[1];
             }
 
-            // Remove any img tags from the description to avoid showing thumbnails
             const cleanDescription = description?.textContent.replace(/<img[^>]*>/g, "") || "";
 
             return {
@@ -85,10 +107,8 @@
         }
       }
 
-      // Sort items by publication date in descending order
       allItems.sort((a, b) => b.pubDate - a.pubDate);
 
-      // Display the sorted items
       container.innerHTML = allItems.map(item => `
         <div class="feed-item">
           <h2><a href="${item.link}" target="_blank">${item.title}</a></h2>
@@ -98,6 +118,9 @@
         </div>
       `).join("");
     }
+
+    // Refresh the page every 24 hours
+    setInterval(() => location.reload(), 24 * 60 * 60 * 1000);
 
     fetchAndDisplayFeeds();
   </script>
