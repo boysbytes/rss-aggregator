@@ -26,13 +26,9 @@ jobs:
         run: |
           node --experimental-modules update-rss.mjs
 
-      - name: Copy feed_data.json to root
-        run: |
-          cp feed_data.json ./
-
       - name: Commit and push changes
         run: |
-          git add feed_data.json
+          git add .
           git commit -m "Automated site update" || echo "No changes to commit"
           git push
 
