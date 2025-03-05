@@ -1,6 +1,6 @@
-const fs = require('fs');
-const fetch = require('node-fetch');
-const { DOMParser } = require('xmldom');
+import fs from 'fs';
+import fetch from 'node-fetch';
+import { DOMParser } from 'xmldom';
 
 // Function to fetch RSS feeds and generate HTML
 async function fetchAndGenerateHtml() {
@@ -16,6 +16,9 @@ async function fetchAndGenerateHtml() {
       const response = await fetch(feed);
       const text = await response.text();
       const xml = parser.parseFromString(text, "application/xml");
+
+      // Extract website title from <channel><title>
+      const websiteTitle = xml.querySelector("channel > title").textContent;
 
       const items = Array.from(xml.querySelectorAll("item")).map(item => {
         let imageUrl = null;
@@ -33,7 +36,8 @@ async function fetchAndGenerateHtml() {
           link: item.querySelector("link").textContent,
           pubDate: new Date(item.querySelector("pubDate").textContent),
           description: cleanDescription,
-          imageUrl
+          imageUrl,
+          websiteTitle
         };
       });
 
@@ -43,13 +47,18 @@ async function fetchAndGenerateHtml() {
     }
   }
 
+  // Sort items by publication date in descending order
   allItems.sort((a, b) => b.pubDate - a.pubDate);
+
+  // Limit to the latest 20 entries
+  allItems = allItems.slice(0, 20);
 
   // Generate HTML content
   const htmlContent = allItems.map(item => `
     <div class="feed-item">
       <h2><a href="${item.link}" target="_blank">${item.title}</a></h2>
-      <p>${item.pubDate.toLocaleString()}</p>
+      <p><strong>${item.websiteTitle}</strong></p>
+      <p>${item.pubDate.toLocaleDateString()}</p>
       ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.title}">` : ""}
       <p>${item.description}</p>
     </div>
