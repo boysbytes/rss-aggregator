@@ -2,11 +2,9 @@ import fs from 'fs';
 import fetch from 'node-fetch';
 import { DOMParser } from 'xmldom';
 
-// Function to fetch RSS feeds and generate HTML
 async function fetchAndGenerateHtml() {
-  const feeds = [
-    "https://boysbytes.github.io/day-dots-jekyll/feed.xml" // Add your RSS feed URLs here
-  ];
+  // Load RSS sources from rss-sources.json
+  const feeds = JSON.parse(fs.readFileSync('rss-sources.json', 'utf8'));
 
   const parser = new DOMParser();
   let allItems = [];
@@ -17,7 +15,6 @@ async function fetchAndGenerateHtml() {
       const text = await response.text();
       const xml = parser.parseFromString(text, "application/xml");
 
-      // Extract website title from <channel><title>
       const websiteTitle = xml.querySelector("channel > title").textContent;
 
       const items = Array.from(xml.querySelectorAll("item")).map(item => {
@@ -29,7 +26,8 @@ async function fetchAndGenerateHtml() {
           if (imgMatch) imageUrl = imgMatch[1];
         }
 
-        const cleanDescription = description?.textContent.replace(/<img[^>]*>/g, "") || "";
+        const cleanDescription =
+          description?.textContent.replace(/<img[^>]*>/g, "") || "";
 
         return {
           title: item.querySelector("title").textContent,
