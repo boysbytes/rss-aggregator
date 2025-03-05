@@ -24,7 +24,7 @@ jobs:
 
       - name: Update site content
         run: |
-          node update-rss.js
+          node --experimental-modules update-rss.mjs
 
       - name: Commit and push changes
         run: |
