@@ -1,6 +1,7 @@
 const feeds = [
-  "https://boysbytes.github.io/day-dots-jekyll/feed.xml" // Add your RSS feed URLs here
-  // Here's an example "<rss-feed01>", "rss-feed02>
+  "https://boysbytes.github.io/day-dots-jekyll/feed.xml", // Add your RSS feed URLs here
+  "https://simonwillison.net/atom/everything/"
+  // Here's an example "<rss-feed01>", "rss-feed02>"
 ];
 
 async function fetchAndDisplayFeeds() {
