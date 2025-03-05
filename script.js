@@ -1,7 +1,6 @@
 const feeds = [
-  "https://boysbytes.github.io/day-dots-jekyll/feed.xml", // Add your RSS feed URLs here
-  "https://simonwillison.net/atom/everything/"
-  // Here's an example "<rss-feed01>", "rss-feed02>"
+  "https://boysbytes.github.io/day-dots-jekyll/feed.xml", // RSS feed
+  "https://simonwillison.net/atom/everything/" // Atom feed
 ];
 
 async function fetchAndDisplayFeeds() {
@@ -15,29 +14,44 @@ async function fetchAndDisplayFeeds() {
       const text = await response.text();
       const xml = parser.parseFromString(text, "application/xml");
 
-      // Extract website title from <channel><title>
-      const websiteTitle = xml.querySelector("channel > title").textContent;
+      // Check if the feed is Atom or RSS based on root element
+      const isAtom = xml.documentElement.nodeName === "feed";
 
-      const items = Array.from(xml.querySelectorAll("item")).map(item => {
+      const websiteTitle = isAtom
+        ? xml.querySelector("feed > title").textContent
+        : xml.querySelector("channel > title").textContent;
+
+      const items = Array.from(
+        isAtom ? xml.querySelectorAll("entry") : xml.querySelectorAll("item")
+      ).map(item => {
         let imageUrl = null;
 
-        // Extract the first <img> tag from the <description> field
-        const description = item.querySelector("description");
-        if (description && description.textContent) {
-          const imgMatch = description.textContent.match(/<img[^>]+src="([^">]+)"/);
+        // Extract image from description/content (RSS or Atom)
+        const description = isAtom
+          ? item.querySelector("content")?.textContent || ""
+          : item.querySelector("description")?.textContent || "";
+
+        if (description) {
+          const imgMatch = description.match(/<img[^>]+src="([^">]+)"/);
           if (imgMatch) imageUrl = imgMatch[1];
         }
 
-        // Remove any img tags from the description to avoid showing thumbnails
-        const cleanDescription = description?.textContent.replace(/<img[^>]*>/g, "") || "";
+        // Remove img tags from description/content
+        const cleanDescription = description.replace(/<img[^>]*>/g, "");
 
         return {
           title: item.querySelector("title").textContent,
-          link: item.querySelector("link").textContent,
-          pubDate: new Date(item.querySelector("pubDate").textContent),
+          link: isAtom
+            ? item.querySelector("link[rel='alternate']")?.getAttribute("href")
+            : item.querySelector("link").textContent,
+          pubDate: new Date(
+            isAtom
+              ? item.querySelector("updated").textContent
+              : item.querySelector("pubDate").textContent
+          ),
           description: cleanDescription,
           imageUrl,
-          websiteTitle // Add website title to each item
+          websiteTitle
         };
       });
 
@@ -58,7 +72,7 @@ async function fetchAndDisplayFeeds() {
     <div class="feed-item">
       <h2><a href="${item.link}" target="_blank">${item.title}</a></h2>
       <p><strong>${item.websiteTitle}</strong></p>
-      <p>${item.pubDate.toLocaleDateString()}</p> <!-- Show only date -->
+      <p>${item.pubDate.toLocaleDateString()}</p>
       ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.title}">` : ""}
       <p>${item.description}</p>
     </div>

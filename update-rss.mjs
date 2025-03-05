@@ -1,13 +1,15 @@
-import fs from 'fs';
+import fs from 'fs/promises';
 import fetch from 'node-fetch';
 import { DOMParser } from 'xmldom';
 
-// Function to fetch RSS feeds and generate HTML
-async function fetchAndGenerateHtml() {
-  const feeds = [
-    "https://boysbytes.github.io/day-dots-jekyll/feed.xml" // Add your RSS feed URLs here
-  ];
+// Load RSS sources from JSON file
+const loadRssSources = async () => {
+  const data = await fs.readFile('rss-sources.json', 'utf8');
+  return JSON.parse(data);
+};
 
+// Fetch and aggregate RSS/Atom feeds
+const fetchAndAggregateFeeds = async (feeds) => {
   const parser = new DOMParser();
   let allItems = [];
 
@@ -17,24 +19,41 @@ async function fetchAndGenerateHtml() {
       const text = await response.text();
       const xml = parser.parseFromString(text, "application/xml");
 
-      // Extract website title from <channel><title>
-      const websiteTitle = xml.querySelector("channel > title").textContent;
+      // Check if feed is Atom or RSS
+      const isAtom = xml.documentElement.nodeName === "feed";
 
-      const items = Array.from(xml.querySelectorAll("item")).map(item => {
+      const websiteTitle = isAtom
+        ? xml.querySelector("feed > title").textContent
+        : xml.querySelector("channel > title").textContent;
+
+      const items = Array.from(
+        isAtom ? xml.querySelectorAll("entry") : xml.querySelectorAll("item")
+      ).map(item => {
         let imageUrl = null;
 
-        const description = item.querySelector("description");
-        if (description && description.textContent) {
-          const imgMatch = description.textContent.match(/<img[^>]+src="([^">]+)"/);
+        // Extract image from description/content
+        const description = isAtom
+          ? item.querySelector("content")?.textContent || ""
+          : item.querySelector("description")?.textContent || "";
+
+        if (description) {
+          const imgMatch = description.match(/<img[^>]+src="([^">]+)"/);
           if (imgMatch) imageUrl = imgMatch[1];
         }
 
-        const cleanDescription = description?.textContent.replace(/<img[^>]*>/g, "") || "";
+        // Remove img tags from description/content
+        const cleanDescription = description.replace(/<img[^>]*>/g, "");
 
         return {
           title: item.querySelector("title").textContent,
-          link: item.querySelector("link").textContent,
-          pubDate: new Date(item.querySelector("pubDate").textContent),
+          link: isAtom
+            ? item.querySelector("link[rel='alternate']")?.getAttribute("href")
+            : item.querySelector("link").textContent,
+          pubDate: new Date(
+            isAtom
+              ? item.querySelector("updated").textContent
+              : item.querySelector("pubDate").textContent
+          ),
           description: cleanDescription,
           imageUrl,
           websiteTitle
@@ -51,23 +70,38 @@ async function fetchAndGenerateHtml() {
   allItems.sort((a, b) => b.pubDate - a.pubDate);
 
   // Limit to the latest 20 entries
-  allItems = allItems.slice(0, 20);
+  return allItems.slice(0, 20);
+};
 
-  // Generate HTML content
-  const htmlContent = allItems.map(item => `
-    <div class="feed-item">
-      <h2><a href="${item.link}" target="_blank">${item.title}</a></h2>
-      <p><strong>${item.websiteTitle}</strong></p>
-      <p>${item.pubDate.toLocaleDateString()}</p>
-      ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.title}">` : ""}
-      <p>${item.description}</p>
-    </div>
-  `).join("");
+// Update index.html with aggregated content
+const updateHtmlFile = async () => {
+  try {
+    const feeds = await loadRssSources();
+    const aggregatedFeeds = await fetchAndAggregateFeeds(feeds);
 
-  // Update index.html with the new content
-  const indexHtml = fs.readFileSync('index.html', 'utf8');
-  const updatedHtml = indexHtml.replace('<div id="rss-feed"></div>', `<div id="rss-feed">${htmlContent}</div>`);
-  fs.writeFileSync('index.html', updatedHtml);
-}
+    // Generate HTML content for aggregated feeds
+    const htmlContent = aggregatedFeeds.map(item => `
+      <div class="feed-item">
+        <h2><a href="${item.link}" target="_blank">${item.title}</a></h2>
+        <p><strong>${item.websiteTitle}</strong></p>
+        <p>${item.pubDate.toLocaleDateString()}</p>
+        ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.title}">` : ""}
+        <p>${item.description}</p>
+      </div>
+    `).join("");
 
-fetchAndGenerateHtml().catch(console.error);
+    // Update index.html with the new content
+    let indexHtml = await fs.readFile('index.html', 'utf8');
+    indexHtml = indexHtml.replace(
+      /<div id="rss-feed">.*<\/div>/s,
+      `<div id="rss-feed">${htmlContent}</div>`
+    );
+    await fs.writeFile('index.html', indexHtml);
+
+    console.log("RSS feed aggregation completed successfully.");
+  } catch (error) {
+    console.error("Error updating HTML file:", error);
+  }
+};
+
+updateHtmlFile();
